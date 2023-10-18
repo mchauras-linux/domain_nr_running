@@ -12,8 +12,6 @@ pub(crate) struct Domain {
     pub(crate) level: i8,
     pub(crate) span: Vec<u32>,
     pub(crate) parent: Option<Node>,
-    pub(crate) sibling: Option<Node>,
-    pub(crate) child: Option<Node>,
 }
 
 impl Domain {
@@ -24,9 +22,6 @@ impl Domain {
             level,
             span,
             parent: None,
-            sibling: None,
-            child: None,
         }))
     }
-
 }

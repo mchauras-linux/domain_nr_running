@@ -13,17 +13,9 @@ lazy_static! {
     };
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct Node {
     node: Arc<Mutex<Domain>>,
-}
-
-impl Clone for Node {
-    fn clone(&self) -> Self {
-        Self {
-            node: self.node.clone(),
-        }
-    }
 }
 
 impl Node {
@@ -31,14 +23,6 @@ impl Node {
         Self {
             node: Domain::new(level, span, cpu),
         }
-    }
-
-    fn is_cpu_node(&self) -> bool {
-        let domain = self.node.lock().unwrap();
-        if domain.id != -1 {
-            return true;
-        }
-        false
     }
 
     pub(crate) fn get_parent(&self) -> Option<Node> {
@@ -53,8 +37,24 @@ impl Node {
         self.node.lock().unwrap().level
     }
 
-    pub(crate) fn set_level(&self, level: i8) {
-        self.node.lock().unwrap().level = level;
+    pub(crate) fn get_nr_running(&self) -> i64 {
+        self.node.lock().unwrap().nr_running
+    }
+
+    fn set_nr_running(&self, nr_running: i64) {
+        self.node.lock().unwrap().nr_running = nr_running;
+    }
+
+    pub(crate) fn get_id(&self) -> i16 {
+        self.node.lock().unwrap().id
+    }
+
+    fn is_cpu_node(&self) -> bool {
+        let domain = self.node.lock().unwrap();
+        if domain.id != -1 {
+            return true;
+        }
+        false
     }
 
     pub(crate) fn insert_node(&self) {
@@ -69,10 +69,6 @@ impl Node {
                 }
             }
         }
-    }
-
-    fn get_id(&self) -> i16 {
-        self.node.lock().unwrap().id
     }
 
     fn is_your_cpu(&self, cpu: &Node) -> bool {
@@ -110,6 +106,23 @@ impl Node {
                 cpu.set_parent(Some(domain.clone()));
                 return;
             }
+            // Loop Control
+            match cpu.get_parent() {
+                Some(parent) => cpu = parent,
+                None => break,
+            }
+        }
+    }
+
+    pub(crate) fn update_nr_running_for_cpu(&self, nr_running: i64) {
+        let change = nr_running - self.get_nr_running();
+        let mut cpu: Node = self.clone();
+        if !self.is_cpu_node() {
+            panic!("Not a cpu Node");
+        }
+
+        loop {
+            cpu.set_nr_running(cpu.get_nr_running() + change);
             // Loop Control
             match cpu.get_parent() {
                 Some(parent) => cpu = parent,
@@ -158,7 +171,7 @@ fn get_cpus_for_span(cpu_span: &Vec<u32>) -> Vec<Node> {
     cpus
 }
 
-fn fetch_cpu_with_index(index: usize) -> Option<Node> {
+pub(crate) fn fetch_cpu_with_index(index: usize) -> Option<Node> {
     match CPUS.lock().unwrap().get(index) {
         Some(node) => Some(node.clone()),
         None => None,
@@ -170,14 +183,4 @@ pub(crate) fn print_data() {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &CPUS.lock().unwrap().clone()).unwrap();
     // println!("{:#X?}", &CPUS.lock().unwrap());
-}
-
-pub(crate) fn increment_data(arg: usize) {
-    match CPUS.lock().unwrap().get(arg) {
-        Some(node) => match node.get_parent() {
-            Some(node) => node.set_level(6),
-            None => println!("None"),
-        },
-        None => println!("None"),
-    }
 }

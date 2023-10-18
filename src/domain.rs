@@ -8,7 +8,7 @@ pub(crate) struct Domain {
     pub(crate) id: i16,
 
     // Domain data
-    pub(crate) nr_running: u64,
+    pub(crate) nr_running: i64,
     pub(crate) level: i8,
     pub(crate) span: Vec<u32>,
     pub(crate) parent: Option<Node>,
